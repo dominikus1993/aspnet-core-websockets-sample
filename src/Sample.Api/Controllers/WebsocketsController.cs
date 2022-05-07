@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Net.WebSockets;
 
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,8 @@ namespace Sample.Api.Controllers;
 [Route("[controller]")]
 public class WeatherForecastController : ControllerBase
 {
+    private static readonly ArrayPool<byte> _arrayPool = ArrayPool<byte>.Shared;
+
     [HttpGet("/ws")]
     public async Task Get()
     {
@@ -24,7 +27,7 @@ public class WeatherForecastController : ControllerBase
 
     private static async Task Echo(WebSocket webSocket)
     {
-        var buffer = new byte[1024 * 4];
+        var buffer = _arrayPool.Rent(1024 * 4);
         var receiveResult = await webSocket.ReceiveAsync(
             new ArraySegment<byte>(buffer), CancellationToken.None);
 
@@ -38,6 +41,8 @@ public class WeatherForecastController : ControllerBase
 
             receiveResult = await webSocket.ReceiveAsync(
                 new ArraySegment<byte>(buffer), CancellationToken.None);
+            
+            _arrayPool.Return(buffer);
         }
 
         await webSocket.CloseAsync(
