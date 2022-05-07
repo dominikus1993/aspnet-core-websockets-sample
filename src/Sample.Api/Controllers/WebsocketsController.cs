@@ -6,21 +6,29 @@ using Microsoft.AspNetCore.Mvc;
 namespace Sample.Api.Controllers;
 
 [ApiController]
-[Route("[controller]")]
 public class WeatherForecastController : ControllerBase
 {
     private static readonly ArrayPool<byte> _arrayPool = ArrayPool<byte>.Shared;
+    private readonly ILogger<WeatherForecastController> _logger;
+
+    public WeatherForecastController(ILogger<WeatherForecastController> logger)
+    {
+        _logger = logger;
+    }
 
     [HttpGet("/ws")]
     public async Task Get()
     {
+        _logger.LogInformation("Request received");
         if (HttpContext.WebSockets.IsWebSocketRequest)
         {
+            _logger.LogInformation("WebSocket request received");
             using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
             await Echo(webSocket);
         }
         else
         {
+            _logger.LogInformation("Not a websocket request");
             HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
         }
     }
