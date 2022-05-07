@@ -17,14 +17,14 @@ public class WeatherForecastController : ControllerBase
     }
 
     [HttpGet("/ws")]
-    public async Task Get()
+    public async Task Get(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Request received");
         if (HttpContext.WebSockets.IsWebSocketRequest)
         {
             _logger.LogInformation("WebSocket request received");
             using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-            await Echo(webSocket);
+            await Echo(webSocket, cancellationToken);
         }
         else
         {
@@ -33,11 +33,11 @@ public class WeatherForecastController : ControllerBase
         }
     }
 
-    private static async Task Echo(WebSocket webSocket)
+    private static async Task Echo(WebSocket webSocket, CancellationToken cancellationToken)
     {
         var buffer = _arrayPool.Rent(1024 * 4);
         var receiveResult = await webSocket.ReceiveAsync(
-            new ArraySegment<byte>(buffer), CancellationToken.None);
+            new ArraySegment<byte>(buffer), cancellationToken);
 
         while (!receiveResult.CloseStatus.HasValue)
         {
@@ -45,14 +45,14 @@ public class WeatherForecastController : ControllerBase
                 new ArraySegment<byte>(buffer, 0, receiveResult.Count),
                 receiveResult.MessageType,
                 receiveResult.EndOfMessage,
-                CancellationToken.None);
+                cancellationToken);
 
             receiveResult = await webSocket.ReceiveAsync(
                 new ArraySegment<byte>(buffer), CancellationToken.None);
             
             _arrayPool.Return(buffer);
         }
-
+        
         await webSocket.CloseAsync(
             receiveResult.CloseStatus.Value,
             receiveResult.CloseStatusDescription,
